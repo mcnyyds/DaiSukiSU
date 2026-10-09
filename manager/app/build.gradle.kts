@@ -21,6 +21,7 @@ val managerVersionCode = rootProject.extra["managerVersionCode"] as Int
 val managerVersionName = rootProject.extra["managerVersionName"] as String
 val managerPackageName = rootProject.extra["managerPackageName"] as String
 val managerName = rootProject.extra["managerName"] as String
+val reuseOfficialNative = providers.gradleProperty("REUSE_OFFICIAL_NATIVE").orNull == "true"
 
 apksign {
     storeFileProperty = "KEYSTORE_FILE"
@@ -90,6 +91,7 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            if (reuseOfficialNative) keepDebugSymbols += "**/*.so"
         }
         resources {
             // https://stackoverflow.com/a/58956288
@@ -102,9 +104,11 @@ android {
         }
     }
 
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
+    if (!reuseOfficialNative) {
+        externalNativeBuild {
+            cmake {
+                path = file("src/main/cpp/CMakeLists.txt")
+            }
         }
     }
 
@@ -118,7 +122,7 @@ android {
     }
 
     compileSdk = androidCompileSdkVersion
-    ndkVersion = androidCompileNdkVersion
+    if (!reuseOfficialNative) ndkVersion = androidCompileNdkVersion
     buildToolsVersion = androidBuildToolsVersion
 
     defaultConfig {
@@ -141,7 +145,7 @@ android {
         }
 
         ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64", "armeabi-v7a", "riscv64")
+            abiFilters += if (reuseOfficialNative) listOf("arm64-v8a") else listOf("arm64-v8a", "x86_64", "armeabi-v7a", "riscv64")
         }
     }
 
@@ -149,7 +153,7 @@ android {
         abi {
             isEnable = isReleaseTask
             reset()
-            include("arm64-v8a", "x86_64", "armeabi-v7a", "riscv64")
+            if (reuseOfficialNative) include("arm64-v8a") else include("arm64-v8a", "x86_64", "armeabi-v7a", "riscv64")
             isUniversalApk = true
         }
     }
@@ -173,7 +177,7 @@ baselineProfile {
 
 base {
     archivesName.set(
-        "ReSukiSU_${managerVersionName}_${managerVersionCode}"
+        "DaiSukiSU_${managerVersionName}_${managerVersionCode}"
     )
 }
 

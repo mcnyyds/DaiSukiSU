@@ -1,0 +1,124 @@
+name: Build DaiSukiSU 35203 (App only)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [meow-35203]
+    paths:
+      - 'manager/**'
+      - '.github/workflows/build-daisukisu.yml'
+      - '.github/prebuilt-35203.sha256'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daisukisu-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GRADLE_USER_HOME: ${{ runner.temp }}/daisukisu-gradle
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check native components
+        run: sha256sum --check .github/prebuilt-35203.sha256
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: '16111833'
+
+      - name: Install SDK packages
+        run: sdkmanager 'platforms;android-37.0' 'build-tools;36.1.0'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Prepare persistent signing key
+        env:
+          KEYSTORE: ${{ secrets.KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          names = ['KEYSTORE', 'KEYSTORE_PASSWORD', 'KEY_ALIAS', 'KEY_PASSWORD']
+          missing = [n for n in names if not os.environ.get(n)]
+          if missing:
+              raise SystemExit('Configure repository Actions secrets: ' + ', '.join(missing))
+          key = Path(os.environ['RUNNER_TEMP']) / 'daisukisu.p12'
+          key.write_bytes(base64.b64decode(os.environ['KEYSTORE'], validate=True))
+          key.chmod(0o600)
+          def escape(value):
+              return (value.replace('\\', '\\\\').replace('\n', '\\n')
+                      .replace('\r', '\\r').replace('=', '\\=').replace(':', '\\:'))
+          values = {'KEYSTORE_FILE': str(key), **{n: os.environ[n] for n in names[1:]}}
+          properties = Path(os.environ['GRADLE_USER_HOME']) / 'gradle.properties'
+          properties.parent.mkdir(parents=True, exist_ok=True)
+          with properties.open('a', encoding='utf-8') as output:
+              output.write('\n')
+              for name, value in values.items():
+                  output.write(name + '=' + escape(value) + '\n')
+          properties.chmod(0o600)
+          PY
+
+      - name: Build and lint manager
+        working-directory: manager
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease :app:lintRelease \
+            -PREUSE_OFFICIAL_NATIVE=true \
+            -PKSU_PACKAGE_NAME=com.resukisu.resukisu.meow \
+            -PKSU_NAME=DaiSukiSU \
+            -PMANAGER_VERSION_CODE=35203 \
+            -PMANAGER_VERSION_NAME=v4.2.0-rc3 \
+            -Pandroid.aapt2FromMavenOverride="$ANDROID_HOME/build-tools/36.1.0/aapt2" \
+            --no-daemon --no-configuration-cache --console=plain
+
+      - name: Verify and collect APK
+        run: |
+          mkdir -p dist
+          APK=manager/app/build/outputs/apk/release/DaiSukiSU_v4.2.0-rc3_35203-arm64-v8a-release.apk
+          "$ANDROID_HOME/build-tools/36.1.0/apksigner" verify --verbose "$APK"
+          "$ANDROID_HOME/build-tools/36.1.0/zipalign" -c -P 16 4 "$APK"
+          cp "$APK" dist/DaiSukiSU-35203-arm64-v8a.apk
+          sha256sum dist/*.apk > dist/SHA256SUMS
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: DaiSukiSU-35203-arm64-v8a
+          path: dist/
+          retention-days: 30
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: DaiSukiSU-lint
+          path: manager/app/build/reports/lint-results-release.*
+          if-no-files-found: ignore
+
+      - name: Remove signing inputs
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/daisukisu.p12"
+          if [ -n "${GRADLE_USER_HOME:-}" ]; then
+            rm -f "$GRADLE_USER_HOME/gradle.properties"
+          fi
