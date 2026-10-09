@@ -18,7 +18,7 @@ extra["managerVersionCode"] = project.findProperty("MANAGER_VERSION_CODE")?.toSt
 extra["managerVersionName"] = project.findProperty("MANAGER_VERSION_NAME")?.toString()
     ?: getGitDescribe()
 extra["isPrBuild"] = project.findProperty("IS_PR_BUILD")?.toString()?.toBoolean() ?: false
-extra["defaultManagerPackageName"] = "com.resukisu.resukisu"
+extra["defaultManagerPackageName"] = "com.mcnyyds.daisukisu"
 extra["managerPackageName"] = project.findProperty("KSU_PACKAGE_NAME")?.toString() ?: extra["defaultManagerPackageName"]
 extra["defaultManagerAppName"] = if (extra["isPrBuild"] == true) "DaiSukiSU PR" else "DaiSukiSU"
 extra["managerName"] = project.findProperty("KSU_NAME")?.toString() ?: extra["defaultManagerAppName"]

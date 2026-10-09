@@ -1097,11 +1097,14 @@ private fun DimSlider(
 private fun LanguageSetting(state: SettingsUiState, viewModel: SettingsViewModel) {
     val language = stringResource(id = R.string.settings_language)
     val languageSystemDefault = stringResource(R.string.language_system_default)
+    val customLanguageName = stringResource(R.string.language_mcnyyds)
 
     // Compute display name based on current app locale
-    val currentLanguageDisplay = remember(state.currentAppLocale) {
+    val currentLanguageDisplay = remember(state.currentAppLocale, customLanguageName, languageSystemDefault) {
         val locale = state.currentAppLocale
-        if (locale != null) {
+        if (locale?.toLanguageTag().equals("zh-XA", ignoreCase = true)) {
+            customLanguageName
+        } else if (locale != null) {
             locale.getDisplayName(locale)
         } else {
             languageSystemDefault
@@ -1120,14 +1123,10 @@ private fun LanguageSetting(state: SettingsUiState, viewModel: SettingsViewModel
     // Language Selection Dialog
     if (state.showLanguageDialog) {
         LanguageSelectionDialog(
-            currentLocale = state.currentAppLocale?.let { locale ->
-                if (locale.country.isEmpty()) locale.language else "${locale.language}_${locale.country}"
-            } ?: "system",
+            currentLocale = state.currentAppLocale?.toLanguageTag() ?: "system",
             onLanguageSelected = { localeTag ->
                 // Update local state immediately
                 viewModel.dispatch(SettingsUiAction.SetLanguage(localeTag))
-                // Apply locale change immediately for Android < 13
-                viewModel.dispatch(SettingsUiAction.RestartActivity)
             },
             onDismiss = {
                 viewModel.dispatch(SettingsUiAction.SetLanguageDialogVisible(false))

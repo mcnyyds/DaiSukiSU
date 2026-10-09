@@ -1,6 +1,9 @@
 package com.resukisu.resukisu.data.settings
 
 import android.app.Application
+import android.app.LocaleManager
+import android.os.Build
+import android.os.LocaleList
 import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -184,7 +187,17 @@ class SettingsPlatformRepository(
             is PlatformSetting.ModuleUpdateCheck ->
                 settings.putBoolean("check_module_update", setting.enabled)
 
-            is PlatformSetting.Locale -> settings.putString("app_locale", setting.tag)
+            is PlatformSetting.Locale -> {
+                settings.putString("app_locale", setting.tag)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    val manager = application.getSystemService(LocaleManager::class.java)
+                    manager.applicationLocales = if (setting.tag == "system") {
+                        LocaleList.getEmptyLocaleList()
+                    } else {
+                        LocaleList.forLanguageTags(setting.tag.replace('_', '-'))
+                    }
+                }
+            }
             is PlatformSetting.AutoJailbreak -> setAutoJailbreak(setting.enabled)
             is PlatformSetting.AdbRoot -> setAdbRoot(setting.enabled)
             is PlatformSetting.SuCompatMode -> settings.putInt("su_compat_mode", setting.value)

@@ -564,4 +564,5 @@
     <string name="install_upload_lkm_file_summary">Use a custom .ko file instead of the built-in LKM</string>
     <string name="skip_ksud">Do not install ksud</string>
     <string name="skip_ksud_summary">Cancel ksud installation. Do not enable this unless absolutely necessary.</string>
+    <string name="language_mcnyyds">简体中文 (mcnyyds)</string>
 </resources>

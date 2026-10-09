@@ -222,7 +222,14 @@ fun initialize() {
     fun setLanguageDialogVisible(visible: Boolean) =
         mutableState.update { it.copy(showLanguageDialog = visible) }
     fun handleLanguageChange(localeTag: String) {
-        updatePlatformAsync(PlatformSetting.Locale(localeTag))
+        viewModelScope.launch {
+            updatePlatform(PlatformSetting.Locale(localeTag))
+                .onSuccess {
+                    applySnapshot(it, resetTempDpi = false)
+                    mutableEvents.tryEmit(SettingsUiEvent.RestartActivity)
+                }
+                .onFailure(::emitError)
+        }
     }
 
     fun restartActivityForLanguage() {

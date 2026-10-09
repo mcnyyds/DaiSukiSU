@@ -85,7 +85,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease :app:lintRelease \
             -PREUSE_OFFICIAL_NATIVE=true \
-            -PKSU_PACKAGE_NAME=com.resukisu.resukisu.meow \
+            -PKSU_PACKAGE_NAME=com.mcnyyds.daisukisu \
             -PKSU_NAME=DaiSukiSU \
             -PMANAGER_VERSION_CODE=35203 \
             -PMANAGER_VERSION_NAME=v4.2.0-rc3 \

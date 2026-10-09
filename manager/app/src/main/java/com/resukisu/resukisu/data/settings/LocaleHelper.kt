@@ -87,17 +87,7 @@ private fun updateResourcesLegacy(context: Context, locale: Locale): Context {
  */
 private fun parseLocaleTag(tag: String): Locale {
     return try {
-        if (tag.contains("_")) {
-            val parts = tag.split("_")
-            Locale.Builder()
-                .setLanguage(parts[0])
-                .setRegion(parts.getOrNull(1) ?: "")
-                .build()
-        } else {
-            Locale.Builder()
-                .setLanguage(tag)
-                .build()
-        }
+        Locale.forLanguageTag(tag.replace('_', '-'))
     } catch (_: Exception) {
         Locale.getDefault()
     }

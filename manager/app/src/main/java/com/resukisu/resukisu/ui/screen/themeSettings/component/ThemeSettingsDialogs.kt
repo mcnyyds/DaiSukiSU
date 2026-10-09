@@ -34,8 +34,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.resukisu.resukisu.R
-import com.resukisu.resukisu.domain.usecase.IsSystemLanguageSettingsUseCase
-import com.resukisu.resukisu.domain.usecase.LaunchSystemLanguageSettingsUseCase
 import com.resukisu.resukisu.ui.component.settings.SettingsChooseDialog
 import com.resukisu.resukisu.ui.theme.ThemeConfig
 import com.resukisu.resukisu.ui.viewmodel.SettingsUiAction
@@ -65,107 +63,89 @@ fun ThemeSettingsDialogs(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LanguageSelectionDialog(
     currentLocale: String,
     onLanguageSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val isSystemLanguageSettingsUseCase =
-        koinInject<IsSystemLanguageSettingsUseCase>()
-    val launchSystemLanguageSettingsUseCase =
-        koinInject<LaunchSystemLanguageSettingsUseCase>()
-    val context = LocalContext.current
     val languageUseSystemDefault = stringResource(R.string.language_system_default)
-    val systemLanguage = stringResource(R.string.settings_language)
-
-    if (isSystemLanguageSettingsUseCase()) {
-        launchSystemLanguageSettingsUseCase(context)
-        onDismiss()
-    } else {
-        val supportedLocales = remember {
-            val locales = mutableListOf<java.util.Locale>()
-            locales.add(java.util.Locale.ROOT)
-
-            val resourceDirs = listOf(
-                "ar", "bg", "de", "fa", "fr", "hu", "in", "it",
-                "ja", "ko", "pl", "pt-rBR", "ru", "th", "tr",
-                "uk", "vi", "zh-rCN", "zh-rTW"
-            )
-
-            resourceDirs.forEach { dir ->
-                try {
-                    val locale = when {
-                        dir.contains("-r") -> {
-                            val parts = dir.split("-r")
-                            java.util.Locale.Builder()
-                                .setLanguage(parts[0])
-                                .setRegion(parts[1])
-                                .build()
-                        }
-
-                        else -> java.util.Locale.Builder()
-                            .setLanguage(dir)
-                            .build()
-                    }
-
-                    val config = android.content.res.Configuration()
-                    config.setLocale(locale)
-                    val localizedContext = context.createConfigurationContext(config)
-                    val testString = localizedContext.getString(R.string.settings_language)
-
-                    if (testString != systemLanguage || locale.language == "en") {
-                        locales.add(locale)
-                    }
-                } catch (_: Exception) {
-                }
-            }
-
-            val sortedLocales = locales.drop(1).sortedBy { it.getDisplayName(it) }
-            mutableListOf<java.util.Locale>().apply {
-                add(locales.first())
-                addAll(sortedLocales)
-            }
-        }
-
-        val allOptions = supportedLocales.map { locale ->
-            val tag = if (locale == java.util.Locale.ROOT) {
-                "system"
-            } else if (locale.country.isEmpty()) {
-                locale.language
-            } else {
-                "${locale.language}_${locale.country}"
-            }
-
-            val displayName = if (locale == java.util.Locale.ROOT) {
-                languageUseSystemDefault
-            } else {
-                locale.getDisplayName(locale)
-            }
-
-            tag to displayName
-        }
-
-        var selectedIndex by remember {
-            mutableIntStateOf(allOptions.indexOfFirst { (tag, _) -> currentLocale == tag })
-        }
-
-        SettingsChooseDialog(
-            show = true,
-            title = stringResource(R.string.settings_language),
-            items = allOptions.map { (_, displayName) -> displayName },
-            selectedIndex = selectedIndex,
-            onDismiss = onDismiss,
-            onSelectedIndexChange = { index ->
-                selectedIndex = index
-                if (selectedIndex >= 0 && selectedIndex < allOptions.size) {
-                    val newLocale = allOptions[selectedIndex].first
-                    onLanguageSelected(newLocale)
-                }
-            }
+    val customLanguageName = stringResource(R.string.language_mcnyyds)
+    val languageTags = remember {
+        listOf(
+            "en-US",
+            "ar",
+            "az",
+            "zh-XA",
+            "be",
+            "bn",
+            "bn-BD",
+            "bs",
+            "da",
+            "de",
+            "es",
+            "et",
+            "fa",
+            "fil",
+            "fr",
+            "gl",
+            "hi",
+            "hr",
+            "hu",
+            "in",
+            "it",
+            "iw",
+            "ja",
+            "kn",
+            "ko",
+            "lt",
+            "lv",
+            "mr",
+            "ms",
+            "nl",
+            "pl",
+            "pt",
+            "pt-BR",
+            "ro",
+            "ru",
+            "sl",
+            "sr",
+            "te",
+            "th",
+            "tk",
+            "tr",
+            "uk",
+            "vi",
+            "zh-CN",
+            "zh-HK",
+            "zh-TW"
         )
     }
+    val allOptions = listOf("system" to languageUseSystemDefault) + languageTags.map { tag ->
+        val locale = java.util.Locale.forLanguageTag(tag)
+        locale.toLanguageTag() to if (locale.toLanguageTag().equals("zh-XA", ignoreCase = true)) {
+            customLanguageName
+        } else {
+            locale.getDisplayName(locale)
+        }
+    }.sortedBy { it.second }
+    var selectedIndex by remember(currentLocale, allOptions) {
+        mutableIntStateOf(allOptions.indexOfFirst { (tag, _) ->
+            currentLocale.replace('_', '-').equals(tag, ignoreCase = true)
+        })
+    }
+    SettingsChooseDialog(
+        show = true,
+        title = stringResource(R.string.settings_language),
+        items = allOptions.map { it.second },
+        selectedIndex = selectedIndex,
+        onDismiss = onDismiss,
+        onSelectedIndexChange = { index ->
+            selectedIndex = index
+            allOptions.getOrNull(index)?.let { onLanguageSelected(it.first) }
+            onDismiss()
+        }
+    )
 }
 
 @Composable
